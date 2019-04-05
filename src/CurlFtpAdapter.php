@@ -317,13 +317,12 @@ class CurlFtpAdapter extends AbstractFtpAdapter
     {
         $connection = $this->getConnection();
 
-        $response = $this->rawCommand($connection, 'RNFR '.$path);
-        list($code) = explode(' ', end($response), 2);
-        if ((int) $code !== 350) {
-            return false;
-        }
+        $moveCommands = [
+            'RNFR '.$path,
+            'RNTO '.$newpath,
+        ];
 
-        $response = $this->rawCommand($connection, 'RNTO '.$newpath);
+        $response = $this->rawPost($connection, $moveCommands);
         list($code) = explode(' ', end($response), 2);
 
         return (int) $code === 250;
@@ -684,6 +683,31 @@ class CurlFtpAdapter extends AbstractFtpAdapter
         };
         $connection->exec([
             CURLOPT_CUSTOMREQUEST => $command,
+            CURLOPT_HEADERFUNCTION => $callback,
+        ]);
+
+        return explode(PHP_EOL, trim($response));
+    }
+
+    /**
+     * Sends an arbitrary command to an FTP server using POSTQUOTE option. This makes sure all commands are run
+     * in succession and increases chance of success for complex operations like "move/rename file".
+     *
+     * @param  Curl  $connection The CURL instance
+     * @param  array $commandsArray    The commands to execute
+     *
+     * @return array Returns the server's response as an array of strings
+     */
+    protected function rawPost($connection, array $commandsArray)
+    {
+        $response = '';
+        $callback = function ($ch, $string) use (&$response) {
+            $response .= $string;
+
+            return strlen($string);
+        };
+        $connection->exec([
+            CURLOPT_POSTQUOTE => $commandsArray,
             CURLOPT_HEADERFUNCTION => $callback,
         ]);
 
