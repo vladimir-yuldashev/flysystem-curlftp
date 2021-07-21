@@ -27,6 +27,11 @@ abstract class TestCase extends BaseTestCase
             'timeout' => getenv('FTP_ADAPTER_TIMEOUT') ?: 35,
             'root' => $this->root,
             'utf8' => true,
+            'ssl' => false,
+            'ftps' => false, // use ftps:// with implicit TLS or ftp:// with explicit TLS
+            'passive' => true, // default use PASV mode
+            'skipPasvIp' => false, // ignore the IP address in the PASV response
+            'verbose' => false, // set verbose mode on/off
         ]);
     }
 

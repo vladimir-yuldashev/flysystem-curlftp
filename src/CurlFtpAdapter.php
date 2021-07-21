@@ -19,15 +19,19 @@ class CurlFtpAdapter extends AbstractFtpAdapter
         'username',
         'password',
         'root',
+        'ftps',
         'ssl',
         'sslVerifyPeer',
         'sslVerifyHost',
         'utf8',
         'timeout',
+        'passive',
+        'skipPasvIp',
         'proxyHost',
         'proxyPort',
         'proxyUsername',
         'proxyPassword',
+        'verbose',
         'enableTimestampsOnUnixListings',
     ];
 
@@ -40,6 +44,9 @@ class CurlFtpAdapter extends AbstractFtpAdapter
     /** @var bool */
     protected $isPureFtpd;
 
+    /** @var bool */
+    protected $ftps = true;
+
     /** @var @int */
     protected $sslVerifyPeer = 1;
 
@@ -48,6 +55,9 @@ class CurlFtpAdapter extends AbstractFtpAdapter
 
     /** @var bool */
     protected $utf8 = false;
+
+    /** @var bool */
+    protected $skipPasvIp = true;
 
     /** @var string */
     protected $proxyHost;
@@ -60,6 +70,17 @@ class CurlFtpAdapter extends AbstractFtpAdapter
 
     /** @var string */
     protected $proxyPassword;
+
+    /** @var bool */
+    protected $verbose = false;
+
+    /**
+     * @param bool $ftps
+     */
+    public function setFtps($ftps)
+    {
+        $this->ftps = (bool) $ftps;
+    }
 
     /**
      * @param bool $ssl
@@ -91,6 +112,22 @@ class CurlFtpAdapter extends AbstractFtpAdapter
     public function setUtf8($utf8): void
     {
         $this->utf8 = (bool) $utf8;
+    }
+
+    /**
+     * @param bool $passive
+     */
+    public function setPassive($passive)
+    {
+        $this->passive = (bool) $passive;
+    }
+
+    /**
+     * @param bool $skipPasvIp
+     */
+    public function setSkipPasvIp($skipPasvIp)
+    {
+        $this->skipPasvIp = (bool) $skipPasvIp;
     }
 
     /**
@@ -158,6 +195,14 @@ class CurlFtpAdapter extends AbstractFtpAdapter
     }
 
     /**
+     * @param bool $verbose
+     */
+    public function setVerbose($verbose)
+    {
+        $this->verbose = (bool) $verbose;
+    }
+
+    /**
      * Establish a connection.
      */
     public function connect(): void
@@ -172,7 +217,15 @@ class CurlFtpAdapter extends AbstractFtpAdapter
         ]);
 
         if ($this->ssl) {
-            $this->connection->setOption(CURLOPT_FTP_SSL, CURLFTPSSL_ALL);
+            $this->connection->setOption(CURLOPT_USE_SSL, CURLFTPSSL_ALL);
+        }
+
+        if (! $this->passive) {
+            $this->connection->setOption(CURLOPT_FTPPORT, '-');
+        }
+
+        if ($this->skipPasvIp) {
+            $this->connection->setOption(CURLOPT_FTP_SKIP_PASV_IP, $this->skipPasvIp);
         }
 
         $this->connection->setOption(CURLOPT_SSL_VERIFYHOST, $this->sslVerifyHost);
@@ -186,6 +239,10 @@ class CurlFtpAdapter extends AbstractFtpAdapter
 
         if ($username = $this->getProxyUsername()) {
             $this->connection->setOption(CURLOPT_PROXYUSERPWD, $username.':'.$this->getProxyPassword());
+        }
+
+        if ($this->verbose) {
+            $this->connection->setOption(CURLOPT_VERBOSE, $this->verbose);
         }
 
         $this->pingConnection();
@@ -697,7 +754,7 @@ class CurlFtpAdapter extends AbstractFtpAdapter
      */
     protected function getBaseUri()
     {
-        $protocol = $this->ssl ? 'ftps' : 'ftp';
+        $protocol = $this->ftps ? 'ftps' : 'ftp';
 
         return $protocol.'://'.$this->getHost().':'.$this->getPort();
     }
